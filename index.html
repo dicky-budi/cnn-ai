@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ANN — AI News Network</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="wrap">
+      <div class="nav">
+        <a href="#news">News</a>
+        <a href="#launches">Launches</a>
+        <a href="#frontend">Frontend</a>
+        <a href="#claude">Claude Tips</a>
+        <a href="#videos">Video</a>
+        <a href="#papers">Research</a>
+      </div>
+      <div class="clock" id="clock">—</div>
+    </div>
+  </div>
+
+  <header class="masthead">
+    <div class="wrap">
+      <div class="logo">
+        <span class="mark">ANN</span>
+        <span class="tag">AI&nbsp;News&nbsp;Network</span>
+      </div>
+      <div class="date">
+        <strong id="today">—</strong>
+        Your daily intelligence on artificial intelligence
+      </div>
+    </div>
+  </header>
+
+  <div class="readbar">
+    <span class="pill" id="toggleRead">Hide read</span>
+    <span class="pill" id="clearRead">Reset read</span>
+    <span class="count" id="readCount"></span>
+  </div>
+
+  <div class="ticker">
+    <div class="label">⚡ Breaking</div>
+    <div class="track"><div class="move" id="ticker"></div></div>
+  </div>
+
+  <div class="container">
+    <main>
+      <section id="news"></section>
+
+      <div class="section-head"><span class="bar"></span><h2>Today's Headlines</h2><span class="rule"></span></div>
+      <div class="grid" id="headlines"></div>
+
+      <div class="section-head"><span class="bar"></span><h2>More from the wire</h2><span class="rule"></span></div>
+      <div class="full-news" id="wire"></div>
+
+      <div id="launches" class="section-head"><span class="bar"></span><h2>Just Released &amp; Shipping</h2><span class="rule"></span></div>
+      <div class="full-news" id="launchlist"></div>
+
+      <div id="frontend" class="section-head"><span class="bar"></span><h2>AI for Frontend Devs</h2><span class="rule"></span></div>
+      <div class="full-news" id="felist"></div>
+
+      <div id="papers" class="section-head"><span class="bar"></span><h2>Research Worth Reading</h2><span class="rule"></span></div>
+      <div class="full-news" id="paperlist"></div>
+    </main>
+
+    <aside class="side">
+      <div id="claude" class="panel claude">
+        <div class="ph">🟠 Claude Tip of the Day</div>
+        <div class="pb tip" id="claudeTip"></div>
+      </div>
+
+      <div class="panel prompt">
+        <div class="ph">🟢 Prompt of the Day</div>
+        <div class="pb">
+          <div class="promptbox" id="promptText"></div>
+          <button class="copybtn" onclick="copyPrompt()">📋 Copy prompt</button>
+        </div>
+      </div>
+
+      <div id="videos" class="panel">
+        <div class="ph">▶ Trending AI Video</div>
+        <div class="pb" id="videoList"></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">💰 Money Moves</div>
+        <div class="pb" id="funding"></div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <div class="wrap">
+      <div class="sources">
+        <strong>Today's Sources</strong>
+        <div id="sourceLinks"></div>
+      </div>
+      <div class="fine">
+        ANN — AI News Network · An automated daily AI briefing. Headlines are summarized from public sources; verify before relying on specifics.
+        <span id="genstamp"></span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="news-data.js"></script>
+  <script>
+  var D = window.ANN_DATA;
+  var READ_KEY = "ann_read_v1";
+  var read = JSON.parse(localStorage.getItem(READ_KEY) || "{}");
+  var hideRead = false;
+
+  function isRead(id){ return !!read[id]; }
+  function saveRead(){ localStorage.setItem(READ_KEY, JSON.stringify(read)); }
+  function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function readClass(id){ return isRead(id) ? " is-read" : ""; }
+
+  // ---- collect every article id for the counter ----
+  function allItems(){
+    return [D.hero].concat(D.headlines, D.wire, D.launches, D.frontend, D.papers);
+  }
+
+  // ---- ticker ----
+  var tline = D.ticker.map(function(t){return "<span>"+esc(t)+"</span>";}).join("");
+  document.getElementById("ticker").innerHTML = tline + tline; // duplicate for seamless loop
+
+  // ---- hero ----
+  (function(){
+    var h = D.hero;
+    document.getElementById("news").innerHTML =
+      '<div class="hero'+readClass(h.id)+'" data-id="'+h.id+'" onclick="go(\''+h.id+'\')">'+
+        '<div class="img" style="background:'+h.color+'">'+
+          '<div class="kicker">'+esc(h.kicker)+'</div>'+
+          '<div class="glyph">'+esc(h.glyph)+'</div>'+
+        '</div>'+
+        '<div class="body">'+
+          '<h1>'+esc(h.title)+'</h1>'+
+          '<p>'+esc(h.dek)+'</p>'+
+          '<div class="meta">'+
+            '<span>🕒 '+h.readMins+' min read</span>'+
+            '<span>Source: '+esc(h.sourceName)+'</span>'+
+            markBtn(h.id)+
+          '</div>'+
+        '</div>'+
+      '</div>';
+  })();
+
+  // ---- headline cards ----
+  document.getElementById("headlines").innerHTML = D.headlines.map(function(a){
+    return '<article class="card'+readClass(a.id)+'" data-id="'+a.id+'" onclick="go(\''+a.id+'\')">'+
+      '<div class="thumb" style="background:'+a.color+'">'+esc(a.glyph)+'</div>'+
+      '<div class="c">'+
+        '<div class="kick">'+esc(a.kicker)+'</div>'+
+        '<h3>'+esc(a.title)+'</h3>'+
+        '<p>'+esc(a.summary)+'</p>'+
+        '<div class="src"><span>'+a.readMins+' min · '+esc(a.sourceName)+'</span>'+markBtn(a.id)+'</div>'+
+      '</div></article>';
+  }).join("");
+
+  // ---- list renderer (wire / launches / frontend / papers) ----
+  function renderList(items){
+    return items.map(function(a){
+      return '<div class="li'+readClass(a.id)+'" data-id="'+a.id+'" onclick="go(\''+a.id+'\')">'+
+        '<div class="k">'+esc(a.kicker)+'</div>'+
+        '<h5>'+esc(a.title)+'</h5>'+
+        '<p>'+esc(a.summary)+'</p>'+
+        '<div class="row"><span class="meta">'+a.readMins+' min read · '+esc(a.sourceName)+'</span>'+markBtn(a.id)+'</div>'+
+      '</div>';
+    }).join("");
+  }
+  document.getElementById("wire").innerHTML = renderList(D.wire);
+  document.getElementById("launchlist").innerHTML = renderList(D.launches);
+  document.getElementById("felist").innerHTML = renderList(D.frontend);
+  document.getElementById("paperlist").innerHTML = renderList(D.papers);
+
+  // ---- mark-read button (stops navigation) ----
+  function markBtn(id){
+    return '<button class="mark" onclick="toggleRead(event,\''+id+'\')">'+(isRead(id)?'✓ Read':'Mark read')+'</button>';
+  }
+
+  // ---- sidebar ----
+  document.getElementById("claudeTip").innerHTML = "<h4>"+esc(D.claudeTip.title)+"</h4>"+D.claudeTip.html;
+  document.getElementById("promptText").textContent = D.promptOfDay;
+  document.getElementById("videoList").innerHTML = D.videos.map(function(v){
+    return '<a class="yt" href="'+v.url+'" target="_blank">'+
+      '<div class="play" style="background:'+v.color+'"></div>'+
+      '<div class="yc"><h5>'+esc(v.title)+'</h5><span>'+esc(v.tag)+'</span></div></a>';
+  }).join("") + '<p style="font-size:11px;color:#6b7177;margin-top:12px">Cards link to live YouTube searches so the freshest videos surface each day.</p>';
+  document.getElementById("funding").innerHTML =
+    D.funding.rows.map(function(r){return '<div class="fund"><span>'+esc(r.name)+'</span><span class="amt">'+esc(r.amt)+'</span></div>';}).join("")+
+    '<p style="font-size:11.5px;color:#5b6066;margin-top:12px">'+D.funding.note+'</p>';
+  document.getElementById("sourceLinks").innerHTML = D.sources.map(function(s){
+    return '<a href="'+s.url+'" target="_blank">'+esc(s.name)+'</a>';
+  }).join("");
+
+  // ---- navigation ----
+  function go(id){ window.location.href = "article.html?id=" + encodeURIComponent(id); }
+
+  // ---- read toggle ----
+  function toggleRead(ev, id){
+    ev.stopPropagation();
+    read[id] = !read[id];
+    if(!read[id]) delete read[id];
+    saveRead();
+    applyRead();
+  }
+  function applyRead(){
+    allItems().forEach(function(a){
+      var el = document.querySelector('[data-id="'+a.id+'"]');
+      if(!el) return;
+      el.classList.toggle("is-read", isRead(a.id));
+      var btn = el.querySelector(".mark");
+      if(btn) btn.textContent = isRead(a.id) ? "✓ Read" : "Mark read";
+      el.style.display = (hideRead && isRead(a.id)) ? "none" : "";
+    });
+    var total = allItems().length;
+    var done = allItems().filter(function(a){return isRead(a.id);}).length;
+    document.getElementById("readCount").textContent = done + " of " + total + " stories read";
+  }
+  document.getElementById("toggleRead").onclick = function(){
+    hideRead = !hideRead;
+    this.textContent = hideRead ? "Show all" : "Hide read";
+    applyRead();
+  };
+  document.getElementById("clearRead").onclick = function(){
+    read = {}; saveRead(); hideRead = false;
+    document.getElementById("toggleRead").textContent = "Hide read";
+    applyRead();
+  };
+  applyRead();
+
+  // ---- copy prompt ----
+  function copyPrompt(){
+    navigator.clipboard.writeText(D.promptOfDay).then(function(){
+      var b=document.querySelector(".copybtn"); var o=b.textContent;
+      b.textContent="✓ Copied!"; setTimeout(function(){b.textContent=o;},1600);
+    });
+  }
+
+  // ---- clock / date ----
+  function tick(){
+    var n=new Date();
+    var days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    var months=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    document.getElementById("today").textContent = days[n.getDay()]+", "+months[n.getMonth()]+" "+n.getDate()+", "+n.getFullYear();
+    document.getElementById("clock").textContent = n.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+" · Live";
+  }
+  tick(); setInterval(tick,30000);
+  document.getElementById("genstamp").textContent = " · Built for: " + D.builtFor;
+  </script>
+</body>
+</html>

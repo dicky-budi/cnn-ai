@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ANN — Story</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="masthead">
+    <div class="wrap">
+      <a class="logo" href="index.html">
+        <span class="mark">ANN</span>
+        <span class="tag">AI&nbsp;News&nbsp;Network</span>
+      </a>
+      <div class="date">
+        <strong id="today">—</strong>
+        Your daily intelligence on artificial intelligence
+      </div>
+    </div>
+  </header>
+
+  <article class="article" id="article">
+    <p class="notfound">Loading…</p>
+  </article>
+
+  <footer>
+    <div class="wrap">
+      <div class="fine">
+        ANN — AI News Network · An automated daily AI briefing. Summaries are drawn from public sources; follow the source link for full reporting.
+      </div>
+    </div>
+  </footer>
+
+  <script src="news-data.js"></script>
+  <script>
+  var D = window.ANN_DATA;
+  var READ_KEY = "ann_read_v1";
+  var read = JSON.parse(localStorage.getItem(READ_KEY) || "{}");
+  function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  function findById(id){
+    var groups = [[D.hero]].concat([D.headlines, D.wire, D.launches, D.frontend, D.papers]);
+    for(var g=0; g<groups.length; g++){
+      for(var i=0; i<groups[g].length; i++){
+        if(groups[g][i].id === id) return groups[g][i];
+      }
+    }
+    return null;
+  }
+
+  var params = new URLSearchParams(window.location.search);
+  var id = params.get("id");
+  var a = id ? findById(id) : null;
+  var color = a && a.color ? a.color : "linear-gradient(135deg,#1a1f2b,#cc0000)";
+  var glyph = a && a.glyph ? a.glyph : "AI";
+
+  function markBtnHtml(){
+    return '<button class="mark" id="markBtn">'+(read[id]?'✓ Marked read':'Mark as read')+'</button>';
+  }
+
+  if(!a){
+    document.getElementById("article").innerHTML =
+      '<a class="backlink" href="index.html">← Back to ANN</a>'+
+      '<div class="notfound"><h1>Story not found</h1><p>This story may have rolled off today\'s edition.</p></div>';
+  } else {
+    var bodyHtml = (a.body || []).map(function(p){return "<p>"+esc(p)+"</p>";}).join("");
+    document.getElementById("article").innerHTML =
+      '<a class="backlink" href="index.html">← Back to ANN</a>'+
+      '<div class="hd"><span class="kicker">'+esc(a.kicker)+'</span>'+
+        '<h1>'+esc(a.title)+'</h1>'+
+        '<div class="byline"><span>🕒 '+a.readMins+' min read</span><span>Source: '+esc(a.sourceName)+'</span><span id="todayB"></span></div>'+
+      '</div>'+
+      '<div class="banner" style="background:'+color+'"><div class="glyph">'+esc(glyph)+'</div></div>'+
+      (a.dek ? '<p class="dek">'+esc(a.dek)+'</p>' : '')+
+      '<div class="content">'+bodyHtml+'</div>'+
+      '<div class="src-box">Reported by <strong>'+esc(a.sourceName)+'</strong>. '+
+        'Read the original coverage: <a href="'+a.sourceUrl+'" target="_blank">'+esc(a.sourceUrl)+'</a><br>'+
+        '<span style="color:#6b7177">This summary is auto-generated for ANN; verify specifics against the source.</span></div>'+
+      '<div class="markbig">'+markBtnHtml()+'</div>';
+
+    var btn = document.getElementById("markBtn");
+    btn.onclick = function(){
+      read[id] = !read[id];
+      if(!read[id]) delete read[id];
+      localStorage.setItem(READ_KEY, JSON.stringify(read));
+      btn.textContent = read[id] ? "✓ Marked read" : "Mark as read";
+    };
+    // auto-mark as read on open
+    if(!read[id]){
+      read[id] = true;
+      localStorage.setItem(READ_KEY, JSON.stringify(read));
+      btn.textContent = "✓ Marked read";
+    }
+  }
+
+  // date
+  var n=new Date();
+  var days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  var months=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var dstr = days[n.getDay()]+", "+months[n.getMonth()]+" "+n.getDate()+", "+n.getFullYear();
+  document.getElementById("today").textContent = dstr;
+  var tb = document.getElementById("todayB"); if(tb) tb.textContent = dstr;
+  </script>
+</body>
+</html>
