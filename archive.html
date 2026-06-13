@@ -49,15 +49,26 @@
 
   <footer>
     <div class="wrap">
-      <div class="fine">ANN — AI News Network · Archive is served from the D1 database; one edition is stored per day.</div>
+      <div class="fine">ANN — AI News Network · Archive is a set of static daily snapshots. One file per day under /archive.</div>
     </div>
   </footer>
 
+  <!-- static list of available editions -->
+  <script src="archive/manifest.js"></script>
   <script>
   function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
   var sel = document.getElementById("dates");
   var out = document.getElementById("out");
   var preselect = new URLSearchParams(location.search).get("date");
+  window.ANN_EDITIONS = window.ANN_EDITIONS || {};
+
+  function loadScript(src){
+    return new Promise(function(res, rej){
+      var s=document.createElement("script");
+      s.src=src; s.onload=res; s.onerror=function(){ rej(new Error("load "+src)); };
+      document.head.appendChild(s);
+    });
+  }
 
   function listRow(a, date){
     return '<div class="li" onclick="location.href=\'article.html?id='+encodeURIComponent(a.id)+'&date='+encodeURIComponent(date)+'\'" style="cursor:pointer">'+
@@ -87,19 +98,21 @@
   }
 
   function loadEdition(date){
+    if(window.ANN_EDITIONS[date]){ renderEdition(date, window.ANN_EDITIONS[date]); return; }
     out.innerHTML = '<p style="color:var(--ann-grey);padding:8px 0">Loading '+esc(date)+'…</p>';
-    fetch("/api/edition/" + encodeURIComponent(date)).then(function(r){
-      if(!r.ok) throw new Error(); return r.json();
-    }).then(function(D){ renderEdition(date, D); })
-      .catch(function(){ out.innerHTML = '<p style="color:var(--ann-grey)">Could not load that edition.</p>'; });
+    loadScript("archive/" + date + ".js").then(function(){
+      if(window.ANN_EDITIONS[date]) renderEdition(date, window.ANN_EDITIONS[date]);
+      else out.innerHTML = '<p style="color:var(--ann-grey)">That edition file is missing its data.</p>';
+    }).catch(function(){
+      out.innerHTML = '<p style="color:var(--ann-grey)">Could not load that edition file.</p>';
+    });
   }
 
-  fetch("/api/editions").then(function(r){
-    if(!r.ok) throw new Error(); return r.json();
-  }).then(function(dates){
+  (function init(){
+    var dates = window.ANN_ARCHIVE || [];
     if(!dates.length){
       sel.innerHTML = '<option>No editions yet</option>';
-      out.innerHTML = '<p style="color:var(--ann-grey)">No archived editions yet. Once the daily task has run a few times, past days will appear here.</p>';
+      out.innerHTML = '<p style="color:var(--ann-grey)">No archived editions yet. Each morning the task saves that day\'s edition here.</p>';
       return;
     }
     sel.innerHTML = dates.map(function(d){return '<option value="'+d+'">'+d+'</option>';}).join("");
@@ -107,10 +120,7 @@
     sel.value = start;
     loadEdition(start);
     sel.onchange = function(){ loadEdition(sel.value); };
-  }).catch(function(){
-    sel.innerHTML = '<option>Archive unavailable</option>';
-    out.innerHTML = '<p style="color:var(--ann-grey)">The archive API isn\'t reachable. This page only works on the deployed Cloudflare site (the database lives there), not when opening the file locally.</p>';
-  });
+  })();
 
   function tick(){
     var n=new Date();
