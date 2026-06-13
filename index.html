@@ -17,6 +17,7 @@
         <a href="#claude">Claude Tips</a>
         <a href="#videos">Video</a>
         <a href="#papers">Research</a>
+        <a href="archive.html">Archive</a>
       </div>
       <div class="clock" id="clock">—</div>
     </div>
@@ -48,7 +49,7 @@
 
   <div class="container">
     <main>
-      <section id="news"></section>
+      <section id="news"><p style="padding:8px 0;color:var(--ann-grey)">Loading today's edition…</p></section>
 
       <div class="section-head"><span class="bar"></span><h2>Today's Headlines</h2><span class="rule"></span></div>
       <div class="grid" id="headlines"></div>
@@ -105,9 +106,11 @@
     </div>
   </footer>
 
+  <!-- news-data.js stays as a local/offline FALLBACK (sets window.ANN_DATA). -->
+  <!-- In production the page overrides it with live data from /api/news.   -->
   <script src="news-data.js"></script>
   <script>
-  var D = window.ANN_DATA;
+  var D = null;
   var READ_KEY = "ann_read_v1";
   var read = JSON.parse(localStorage.getItem(READ_KEY) || "{}");
   var hideRead = false;
@@ -116,18 +119,30 @@
   function saveRead(){ localStorage.setItem(READ_KEY, JSON.stringify(read)); }
   function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
   function readClass(id){ return isRead(id) ? " is-read" : ""; }
+  function allItems(){ return [D.hero].concat(D.headlines, D.wire, D.launches, D.frontend, D.papers); }
 
-  // ---- collect every article id for the counter ----
-  function allItems(){
-    return [D.hero].concat(D.headlines, D.wire, D.launches, D.frontend, D.papers);
+  function markBtn(id){
+    return '<button class="mark" onclick="toggleRead(event,\''+id+'\')">'+(isRead(id)?'✓ Read':'Mark read')+'</button>';
+  }
+  function go(id){ window.location.href = "article.html?id=" + encodeURIComponent(id); }
+
+  function renderList(items){
+    return items.map(function(a){
+      return '<div class="li'+readClass(a.id)+'" data-id="'+a.id+'" onclick="go(\''+a.id+'\')">'+
+        '<div class="k">'+esc(a.kicker)+'</div>'+
+        '<h5>'+esc(a.title)+'</h5>'+
+        '<p>'+esc(a.summary)+'</p>'+
+        '<div class="row"><span class="meta">'+a.readMins+' min read · '+esc(a.sourceName)+'</span>'+markBtn(a.id)+'</div>'+
+      '</div>';
+    }).join("");
   }
 
-  // ---- ticker ----
-  var tline = D.ticker.map(function(t){return "<span>"+esc(t)+"</span>";}).join("");
-  document.getElementById("ticker").innerHTML = tline + tline; // duplicate for seamless loop
+  function renderAll(){
+    // ticker
+    var tline = D.ticker.map(function(t){return "<span>"+esc(t)+"</span>";}).join("");
+    document.getElementById("ticker").innerHTML = tline + tline;
 
-  // ---- hero ----
-  (function(){
+    // hero
     var h = D.hero;
     document.getElementById("news").innerHTML =
       '<div class="hero'+readClass(h.id)+'" data-id="'+h.id+'" onclick="go(\''+h.id+'\')">'+
@@ -145,58 +160,42 @@
           '</div>'+
         '</div>'+
       '</div>';
-  })();
 
-  // ---- headline cards ----
-  document.getElementById("headlines").innerHTML = D.headlines.map(function(a){
-    return '<article class="card'+readClass(a.id)+'" data-id="'+a.id+'" onclick="go(\''+a.id+'\')">'+
-      '<div class="thumb" style="background:'+a.color+'">'+esc(a.glyph)+'</div>'+
-      '<div class="c">'+
-        '<div class="kick">'+esc(a.kicker)+'</div>'+
-        '<h3>'+esc(a.title)+'</h3>'+
-        '<p>'+esc(a.summary)+'</p>'+
-        '<div class="src"><span>'+a.readMins+' min · '+esc(a.sourceName)+'</span>'+markBtn(a.id)+'</div>'+
-      '</div></article>';
-  }).join("");
-
-  // ---- list renderer (wire / launches / frontend / papers) ----
-  function renderList(items){
-    return items.map(function(a){
-      return '<div class="li'+readClass(a.id)+'" data-id="'+a.id+'" onclick="go(\''+a.id+'\')">'+
-        '<div class="k">'+esc(a.kicker)+'</div>'+
-        '<h5>'+esc(a.title)+'</h5>'+
-        '<p>'+esc(a.summary)+'</p>'+
-        '<div class="row"><span class="meta">'+a.readMins+' min read · '+esc(a.sourceName)+'</span>'+markBtn(a.id)+'</div>'+
-      '</div>';
+    // headline cards
+    document.getElementById("headlines").innerHTML = D.headlines.map(function(a){
+      return '<article class="card'+readClass(a.id)+'" data-id="'+a.id+'" onclick="go(\''+a.id+'\')">'+
+        '<div class="thumb" style="background:'+a.color+'">'+esc(a.glyph)+'</div>'+
+        '<div class="c">'+
+          '<div class="kick">'+esc(a.kicker)+'</div>'+
+          '<h3>'+esc(a.title)+'</h3>'+
+          '<p>'+esc(a.summary)+'</p>'+
+          '<div class="src"><span>'+a.readMins+' min · '+esc(a.sourceName)+'</span>'+markBtn(a.id)+'</div>'+
+        '</div></article>';
     }).join("");
+
+    document.getElementById("wire").innerHTML = renderList(D.wire);
+    document.getElementById("launchlist").innerHTML = renderList(D.launches);
+    document.getElementById("felist").innerHTML = renderList(D.frontend);
+    document.getElementById("paperlist").innerHTML = renderList(D.papers);
+
+    // sidebar
+    document.getElementById("claudeTip").innerHTML = "<h4>"+esc(D.claudeTip.title)+"</h4>"+D.claudeTip.html;
+    document.getElementById("promptText").textContent = D.promptOfDay;
+    document.getElementById("videoList").innerHTML = D.videos.map(function(v){
+      return '<a class="yt" href="'+v.url+'" target="_blank">'+
+        '<div class="play" style="background:'+v.color+'"></div>'+
+        '<div class="yc"><h5>'+esc(v.title)+'</h5><span>'+esc(v.tag)+'</span></div></a>';
+    }).join("") + '<p style="font-size:11px;color:#6b7177;margin-top:12px">Cards link to live YouTube searches so the freshest videos surface each day.</p>';
+    document.getElementById("funding").innerHTML =
+      D.funding.rows.map(function(r){return '<div class="fund"><span>'+esc(r.name)+'</span><span class="amt">'+esc(r.amt)+'</span></div>';}).join("")+
+      '<p style="font-size:11.5px;color:#5b6066;margin-top:12px">'+D.funding.note+'</p>';
+    document.getElementById("sourceLinks").innerHTML = D.sources.map(function(s){
+      return '<a href="'+s.url+'" target="_blank">'+esc(s.name)+'</a>';
+    }).join("");
+
+    document.getElementById("genstamp").textContent = " · Edition: " + (D.builtFor || "");
+    applyRead();
   }
-  document.getElementById("wire").innerHTML = renderList(D.wire);
-  document.getElementById("launchlist").innerHTML = renderList(D.launches);
-  document.getElementById("felist").innerHTML = renderList(D.frontend);
-  document.getElementById("paperlist").innerHTML = renderList(D.papers);
-
-  // ---- mark-read button (stops navigation) ----
-  function markBtn(id){
-    return '<button class="mark" onclick="toggleRead(event,\''+id+'\')">'+(isRead(id)?'✓ Read':'Mark read')+'</button>';
-  }
-
-  // ---- sidebar ----
-  document.getElementById("claudeTip").innerHTML = "<h4>"+esc(D.claudeTip.title)+"</h4>"+D.claudeTip.html;
-  document.getElementById("promptText").textContent = D.promptOfDay;
-  document.getElementById("videoList").innerHTML = D.videos.map(function(v){
-    return '<a class="yt" href="'+v.url+'" target="_blank">'+
-      '<div class="play" style="background:'+v.color+'"></div>'+
-      '<div class="yc"><h5>'+esc(v.title)+'</h5><span>'+esc(v.tag)+'</span></div></a>';
-  }).join("") + '<p style="font-size:11px;color:#6b7177;margin-top:12px">Cards link to live YouTube searches so the freshest videos surface each day.</p>';
-  document.getElementById("funding").innerHTML =
-    D.funding.rows.map(function(r){return '<div class="fund"><span>'+esc(r.name)+'</span><span class="amt">'+esc(r.amt)+'</span></div>';}).join("")+
-    '<p style="font-size:11.5px;color:#5b6066;margin-top:12px">'+D.funding.note+'</p>';
-  document.getElementById("sourceLinks").innerHTML = D.sources.map(function(s){
-    return '<a href="'+s.url+'" target="_blank">'+esc(s.name)+'</a>';
-  }).join("");
-
-  // ---- navigation ----
-  function go(id){ window.location.href = "article.html?id=" + encodeURIComponent(id); }
 
   // ---- read toggle ----
   function toggleRead(ev, id){
@@ -207,6 +206,7 @@
     applyRead();
   }
   function applyRead(){
+    if(!D) return;
     allItems().forEach(function(a){
       var el = document.querySelector('[data-id="'+a.id+'"]');
       if(!el) return;
@@ -229,9 +229,7 @@
     document.getElementById("toggleRead").textContent = "Hide read";
     applyRead();
   };
-  applyRead();
 
-  // ---- copy prompt ----
   function copyPrompt(){
     navigator.clipboard.writeText(D.promptOfDay).then(function(){
       var b=document.querySelector(".copybtn"); var o=b.textContent;
@@ -239,7 +237,7 @@
     });
   }
 
-  // ---- clock / date ----
+  // ---- clock / date (independent of data) ----
   function tick(){
     var n=new Date();
     var days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
@@ -248,7 +246,25 @@
     document.getElementById("clock").textContent = n.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+" · Live";
   }
   tick(); setInterval(tick,30000);
-  document.getElementById("genstamp").textContent = " · Built for: " + D.builtFor;
+
+  // ---- data loader: live API first, local fallback second ----
+  function loadData(){
+    return fetch("/api/news").then(function(r){
+      if(!r.ok) throw new Error("api " + r.status);
+      return r.json();
+    }).catch(function(){
+      if(window.ANN_DATA) return window.ANN_DATA; // local/offline fallback
+      throw new Error("no data source available");
+    });
+  }
+  loadData().then(function(data){
+    D = data; renderAll();
+  }).catch(function(err){
+    document.getElementById("news").innerHTML =
+      '<div class="hero"><div class="body"><h1>Couldn\'t load today\'s edition</h1>'+
+      '<p>The news API didn\'t respond and no local fallback was found. '+
+      'If you just deployed, make sure the D1 binding "DB" is set and the daily task has run at least once.</p></div></div>';
+  });
   </script>
 </body>
 </html>

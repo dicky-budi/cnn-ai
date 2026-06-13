@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ANN — Archive</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .arcbar{max-width:1180px;margin:18px auto 0;padding:0 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .arcbar select{background:var(--ann-bg);color:var(--ann-ink);border:1px solid var(--ann-line);border-radius:6px;padding:8px 12px;font-size:14px}
+  .arcbar label{font-size:13px;color:var(--ann-grey);font-weight:600}
+  .arcwrap{max-width:1180px;margin:18px auto;padding:0 16px}
+  .arcwrap .ed-hero{font-size:24px;font-weight:800;letter-spacing:-.4px;margin:4px 0 16px}
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="wrap">
+      <div class="nav">
+        <a href="index.html">← Today</a>
+        <a href="archive.html">Archive</a>
+      </div>
+      <div class="clock" id="clock">—</div>
+    </div>
+  </div>
+
+  <header class="masthead">
+    <div class="wrap">
+      <a class="logo" href="index.html">
+        <span class="mark">ANN</span>
+        <span class="tag">AI&nbsp;News&nbsp;Network · Archive</span>
+      </a>
+      <div class="date">
+        <strong id="today">—</strong>
+        Browse past editions
+      </div>
+    </div>
+  </header>
+
+  <div class="arcbar">
+    <label for="dates">Edition:</label>
+    <select id="dates"><option>Loading…</option></select>
+  </div>
+
+  <div class="arcwrap" id="out">
+    <p style="color:var(--ann-grey);padding:8px 0">Loading archive…</p>
+  </div>
+
+  <footer>
+    <div class="wrap">
+      <div class="fine">ANN — AI News Network · Archive is served from the D1 database; one edition is stored per day.</div>
+    </div>
+  </footer>
+
+  <script>
+  function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  var sel = document.getElementById("dates");
+  var out = document.getElementById("out");
+  var preselect = new URLSearchParams(location.search).get("date");
+
+  function listRow(a, date){
+    return '<div class="li" onclick="location.href=\'article.html?id='+encodeURIComponent(a.id)+'&date='+encodeURIComponent(date)+'\'" style="cursor:pointer">'+
+      '<div class="k">'+esc(a.kicker)+'</div>'+
+      '<h5>'+esc(a.title)+'</h5>'+
+      '<p>'+esc(a.summary || a.dek || "")+'</p>'+
+      '<div class="row"><span class="meta">'+(a.readMins||1)+' min read · '+esc(a.sourceName||"")+'</span></div>'+
+    '</div>';
+  }
+
+  function renderEdition(date, D){
+    var sections = [
+      ["Top Story", [D.hero]],
+      ["Headlines", D.headlines],
+      ["From the wire", D.wire],
+      ["Just Released", D.launches],
+      ["AI for Frontend Devs", D.frontend],
+      ["Research", D.papers]
+    ];
+    var html = '<div class="ed-hero">'+esc(D.builtFor || date)+'</div>';
+    sections.forEach(function(s){
+      if(!s[1] || !s[1].length) return;
+      html += '<div class="section-head"><span class="bar"></span><h2>'+esc(s[0])+'</h2><span class="rule"></span></div>';
+      html += '<div class="full-news">'+ s[1].map(function(a){return listRow(a, date);}).join("") +'</div>';
+    });
+    out.innerHTML = html;
+  }
+
+  function loadEdition(date){
+    out.innerHTML = '<p style="color:var(--ann-grey);padding:8px 0">Loading '+esc(date)+'…</p>';
+    fetch("/api/edition/" + encodeURIComponent(date)).then(function(r){
+      if(!r.ok) throw new Error(); return r.json();
+    }).then(function(D){ renderEdition(date, D); })
+      .catch(function(){ out.innerHTML = '<p style="color:var(--ann-grey)">Could not load that edition.</p>'; });
+  }
+
+  fetch("/api/editions").then(function(r){
+    if(!r.ok) throw new Error(); return r.json();
+  }).then(function(dates){
+    if(!dates.length){
+      sel.innerHTML = '<option>No editions yet</option>';
+      out.innerHTML = '<p style="color:var(--ann-grey)">No archived editions yet. Once the daily task has run a few times, past days will appear here.</p>';
+      return;
+    }
+    sel.innerHTML = dates.map(function(d){return '<option value="'+d+'">'+d+'</option>';}).join("");
+    var start = (preselect && dates.indexOf(preselect)>=0) ? preselect : dates[0];
+    sel.value = start;
+    loadEdition(start);
+    sel.onchange = function(){ loadEdition(sel.value); };
+  }).catch(function(){
+    sel.innerHTML = '<option>Archive unavailable</option>';
+    out.innerHTML = '<p style="color:var(--ann-grey)">The archive API isn\'t reachable. This page only works on the deployed Cloudflare site (the database lives there), not when opening the file locally.</p>';
+  });
+
+  function tick(){
+    var n=new Date();
+    var days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    var months=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    document.getElementById("today").textContent = days[n.getDay()]+", "+months[n.getMonth()]+" "+n.getDate()+", "+n.getFullYear();
+    document.getElementById("clock").textContent = n.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  }
+  tick();
+  </script>
+</body>
+</html>
