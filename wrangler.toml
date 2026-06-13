@@ -15,4 +15,4 @@ pages_build_output_dir = "."
 [[d1_databases]]
 binding = "DB"
 database_name = "cnn-ai-db"
-database_id = "REPLACE_WITH_YOUR_DATABASE_ID"   # paste from: npx wrangler d1 create cnn-ai-db
+database_id = "0dccb9ca-1fcc-4a0e-b897-39612848f3b0"   # paste from: npx wrangler d1 create cnn-ai-db
