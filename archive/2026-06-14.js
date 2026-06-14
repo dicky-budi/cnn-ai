@@ -1,4 +1,5 @@
-window.ANN_DATA = {
+window.ANN_EDITIONS = window.ANN_EDITIONS || {};
+window.ANN_EDITIONS["2026-06-14"] = {
   "builtFor": "Saturday, June 14, 2026",
   "ticker": [
     "Anthropic ships Claude Fable 5, first model in new Mythos-class tier",
